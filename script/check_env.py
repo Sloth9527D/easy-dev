@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import shutil
 import subprocess
 import sys
@@ -28,7 +29,6 @@ def clean_version_string(raw_str: str) -> str:
 def get_tool_version(cmd: str, args: list, line_idx: int) -> str | None:
     """通过命令行获取工具版本号，如果未安装则返回 None"""
     try:
-        # 优先获取可执行文件的绝对路径，避免别名问题
         path = shutil.which(cmd)
         if not path:
             return None
@@ -56,36 +56,35 @@ def get_tool_version(cmd: str, args: list, line_idx: int) -> str | None:
 
 
 def main():
-    additional_context = {}
-
+    # 用于临时存储检查结果的字典
+    check_res = {}
     for key, info in COMPONENTS.items():
         # 1. 拦截特殊内部模块处理 (如 Python)
         if info.get("type") == "internal":
             if key == "python":
-                # 直接通过内置模块获取 Python 版本，绕过 WindowsApps 商店别名陷阱
-                additional_context[key] = (True, platform.python_version())
+                check_res[key] = platform.python_version()
             continue
 
         # 2. 常规命令行工具版本检查
         cmd = info["cmd"]
         version = get_tool_version(cmd, info["args"], info["line_idx"])
+        check_res[key] = version  # 成功是版本号字符串，失败是 None
 
-        if version:
-            additional_context[key] = (True, version)
-        else:
-            additional_context[key] = (False, "not_found")
+    # # 3. 检查核心工具是否存在，决定 continue 状态
+    continue_session = not any(
+        check_res.get(tool) is None for tool in COMPONENTS.keys()
+    )
 
-    # 3. 检查核心工具，决定是否继续会话
-    required_tools = ["git", "python", "vscode", "llvm"]
-    continue_session = True
+    # 4. 构建上下文字符串
+    context_segments = []
+    for key in ["git", "cmake", "python", "vscode", "llvm"]:
+        val = check_res.get(key)
+        val_str = val if val else "not_found"
+        context_segments.append(f"{key}: {val_str}")
 
-    for tool in required_tools:
-        # 检查 additional_context 元组中的布尔值 (index 0)
-        if tool in additional_context and not additional_context[tool][0]:
-            continue_session = False
-            break
+    additional_context = ", ".join(context_segments)
 
-    # 4. 构造结构化的 JSON Hook 响应
+    # 5. 构造最终的响应负载
     response_payload = {
         "continue": continue_session,
         "hookSpecificOutput": {
@@ -94,15 +93,19 @@ def main():
         },
     }
 
-    # 5. 根据继续状态重定向输出流
-    output_json = json.dumps(response_payload, ensure_ascii=False, indent=2)
+    output_json = json.dumps(response_payload, ensure_ascii=False)
 
+    # 6. 根据 continue_session 选择输出流和退出码
     if continue_session:
-        print(output_json, file=sys.stdout)
+        # 成功：输出到 stdout，退出码 0
+        sys.stdout.write(output_json)
+        sys.stdout.flush()
         sys.exit(0)
     else:
-        print(output_json, file=sys.stderr)
-        sys.exit(1)  # 返回非 0 状态码，进一步确保主程序识别到异常并阻断
+        # 失败：输出到 stderr，退出码 1
+        sys.stderr.write(output_json)
+        sys.stderr.flush()
+        sys.exit(1)
 
 
 if __name__ == "__main__":

@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python C:/Users/p4797/.claude/plugins/easy_dev/script/check_env.py",
+            "command": "python ${CLAUDE_PLUGIN_ROOT}/script/check_env.py",
             "timeout": 30
           }
         ]
