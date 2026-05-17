@@ -25,7 +25,8 @@ try {
 
     $llvmMingwUrl = $asset.browser_download_url
     $fileName = $asset.name
-} catch {
+}
+catch {
     Write-Host "`n[!] Failed: fetch latest release metadata from GitHub API" -ForegroundColor Red
     Write-Host "Target URL: $apiUrl" -ForegroundColor DarkGray
     Write-Host "Details   : $_" -ForegroundColor DarkGray
@@ -39,7 +40,8 @@ try {
         Write-Host ""
         cmd.exe /c pause
         exit
-    } else {
+    }
+    else {
         $llvmMingwVersion = $userInput.Trim().TrimStart('v')
         # 🌟 FIXED: Removed '-download' from the manual fallback naming rule as well
         $fileName = "llvm-mingw-$llvmMingwVersion-$msvcrt-$arch.zip"
@@ -58,7 +60,8 @@ $clangExePath = "$mingwBinPath\clang.exe"
 # ==========================================
 if (Test-Path -Path $clangExePath) {
     Write-Host "`n-> llvm-mingw $llvmMingwVersion is already installed at: $installPath" -ForegroundColor Green
-} else {
+}
+else {
     if (-Not (Test-Path -Path $downloadDir)) { New-Item -ItemType Directory -Path $downloadDir -Force | Out-Null }
 
     $tempExtractPath = "$downloadDir\llvm_mingw_temp_$llvmMingwVersion"
@@ -72,10 +75,12 @@ if (Test-Path -Path $clangExePath) {
         if (-Not (Test-Path -Path $downloadPath)) {
             Invoke-WebRequest -Uri $llvmMingwUrl -OutFile $downloadPath
             Write-Host "-> Download complete!" -ForegroundColor Green
-        } else {
+        }
+        else {
             Write-Host "-> Target ZIP already exists in downloads directory." -ForegroundColor Green
         }
-    } catch {
+    }
+    catch {
         Write-Host "-> ❌ Download FAILED. Please check your connection or source URL:" -ForegroundColor Red
         Write-Host "   $llvmMingwUrl" -ForegroundColor DarkGray
         if (Test-Path -Path $tempExtractPath) { Remove-Item -Path $tempExtractPath -Recurse -Force }
@@ -96,7 +101,8 @@ if (Test-Path -Path $clangExePath) {
         Remove-Item -Path $tempExtractPath -Recurse -Force
         Remove-Item -Path $downloadPath -Force
         Write-Host "-> Extraction successful and temporary files cleaned!" -ForegroundColor Green
-    } else {
+    }
+    else {
         Write-Host "-> ❌ Extraction FAILED." -ForegroundColor Red
         if (Test-Path -Path $tempExtractPath) { Remove-Item -Path $tempExtractPath -Recurse -Force }
         Write-Host ""
@@ -124,7 +130,8 @@ if ($userPath -notmatch [regex]::Escape($mingwBinPath)) {
 if ($pathUpdated) {
     [Environment]::SetEnvironmentVariable("Path", $userPath, "User")
     Write-Host "-> Added llvm-mingw to User PATH successfully." -ForegroundColor Green
-} else {
+}
+else {
     Write-Host "-> llvm-mingw is already in User PATH." -ForegroundColor Green
 }
 

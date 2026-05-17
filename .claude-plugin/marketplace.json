@@ -1,0 +1,44 @@
+{
+  "name": "easy_dev",
+  "owner": {
+    "name": "Sloth9527D",
+    "email": "p479764650@gmail.com"
+  },
+  "metadata": {
+    "description": ""
+  },
+  "plugins": [
+    {
+      "name": "easy_dev",
+      "source": "./",
+      "description": "Complete collection of agents, skills, hooks, commands, and rules evolved over 10+ months of intensive daily use",
+      "author": {
+        "name": "Sloth9527D"
+      },
+      "homepage": "https://github.com/Sloth9527D/easy_dev",
+      "repository": "https://github.com/Sloth9527D/easy_dev",
+      "license": "MIT",
+      "keywords": [
+        "agents",
+        "skills",
+        "hooks",
+        "commands",
+        "tdd",
+        "code-review",
+        "security",
+        "best-practices"
+      ],
+      "category": "workflow",
+      "tags": [
+        "agents",
+        "skills",
+        "hooks",
+        "commands",
+        "tdd",
+        "code-review",
+        "security",
+        "best-practices"
+      ]
+    }
+  ]
+}

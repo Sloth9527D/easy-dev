@@ -8,7 +8,7 @@
 # ==========================================
 Write-Host "=> Configuring network proxy (127.0.0.1:10808)..." -ForegroundColor Cyan
 $env:HTTPS_PROXY = "http://127.0.0.1:10808"
-$env:HTTP_PROXY  = "http://127.0.0.1:10808"
+$env:HTTP_PROXY = "http://127.0.0.1:10808"
 
 # ==========================================
 # 2. 下载并执行在线安装脚本
@@ -80,7 +80,8 @@ try {
     $versionOutput = Invoke-Expression "claude --version" 2>$null
     if ($versionOutput) {
         $claudeVersion = $versionOutput.Trim()
-    } else {
+    }
+    else {
         $claudeVersion = "Installed (Version flag not supported)"
     }
 }

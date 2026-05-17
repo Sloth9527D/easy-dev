@@ -4,7 +4,7 @@
 
 # 1. 配置临时网络代理（仅对当前运行的脚本窗口生效）
 Write-Host "[1/5] 正在配置临时网络代理..." -ForegroundColor Cyan
-$env:HTTP_PROXY  = "http://127.0.0.1:10808"
+$env:HTTP_PROXY = "http://127.0.0.1:10808"
 $env:HTTPS_PROXY = "http://127.0.0.1:10808"
 
 # 2. 通过 winget 安装 Oh My Posh
@@ -12,13 +12,14 @@ Write-Host "[2/5] 正在通过 winget 静默安装 Oh My Posh..." -ForegroundCol
 winget install JanDeDobbeleer.OhMyPosh -s winget --silent --accept-source-agreements --accept-package-agreements
 
 # 刷新当前控制台的环境变量，确保后续可以立刻使用 oh-my-posh 命令
-$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+$env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
 
 # 3. 自动安装 Cascadia Mono 字体
 Write-Host "[3/5] 正在下载并安装 Cascadia Mono 字体..." -ForegroundColor Cyan
 if (Get-Command oh-my-posh -ErrorAction SilentlyContinue) {
     oh-my-posh font install cascadiamono
-} else {
+}
+else {
     Write-Error "Oh My Posh 安装失败或未找到命令，请检查网络代理与 winget 状态。"
     exit
 }
@@ -27,7 +28,7 @@ if (Get-Command oh-my-posh -ErrorAction SilentlyContinue) {
 Write-Host "[4/5] 正在检测并配置 PowerShell 初始化脚本..." -ForegroundColor Cyan
 
 # 目标主题路径
-$ThemePath = "C:\Program Files\WindowsApps\ohmyposh.cli_29.13.1.0_x64__96v55e8n804z4\themes\tokyo.omp.json"
+$ThemePath = "C:\Program Files\WindowsApps\ohmyposh.cli_29.13.1.0_x64__96v55e8n804z4\themes\powerlevel10k_rainbow.omp.json"
 
 # 需要写入配置文件的初始化内容
 $ProfileContent = @"
@@ -50,12 +51,14 @@ if (!(Test-Path $PROFILE)) {
     New-Item -ItemType File -Path $PROFILE -Force | Out-Null
     Set-Content -Path $PROFILE -Value $ProfileContent
     Write-Host "已成功创建配置文件并写入 OMP 初始化代码。" -ForegroundColor Green
-} else {
+}
+else {
     $CurrentConfig = Get-Content -Path $PROFILE -Raw
     if ($CurrentConfig -notlike "*oh-my-posh init*") {
         Add-Content -Path $PROFILE -Value $ProfileContent
         Write-Host "已在现有配置文件末尾追加 OMP 初始化代码。" -ForegroundColor Green
-    } else {
+    }
+    else {
         Write-Host "检测到配置文件中已存在相关初始化代码，跳过写入。" -ForegroundColor Yellow
     }
 }

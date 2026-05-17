@@ -18,7 +18,8 @@ $cmakeExePath = "$cmakeBinPath\cmake.exe"
 if (Test-Path -Path $cmakeExePath) {
     Write-Host "`n-> CMake $cmakeVersion is already installed at: $installPath" -ForegroundColor Green
     Write-Host "-> Skipping download and installation steps..." -ForegroundColor Yellow
-} else {
+}
+else {
     # 确保下载和安装目录存在
     if (-Not (Test-Path -Path $downloadDir)) {
         New-Item -ItemType Directory -Path $downloadDir -Force | Out-Null
@@ -34,7 +35,8 @@ if (Test-Path -Path $cmakeExePath) {
     if (-Not (Test-Path -Path $downloadPath)) {
         Invoke-WebRequest -Uri $cmakeUrl -OutFile $downloadPath
         Write-Host "-> Download complete! File saved to: $downloadPath" -ForegroundColor Green
-    } else {
+    }
+    else {
         Write-Host "-> ZIP Archive already downloaded at: $downloadPath" -ForegroundColor Green
     }
 
@@ -87,7 +89,8 @@ if ($userPath -notmatch [regex]::Escape($cmakeBinPath)) {
 if ($pathUpdated) {
     [Environment]::SetEnvironmentVariable("Path", $userPath, "User")
     Write-Host "-> User environment variables updated!" -ForegroundColor Green
-} else {
+}
+else {
     Write-Host "-> Environment variables are already up to date." -ForegroundColor Green
 }
 

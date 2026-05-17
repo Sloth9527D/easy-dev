@@ -14,7 +14,8 @@ $pythonExePath = "$installPath\python.exe"
 if (Test-Path -Path $pythonExePath) {
     Write-Host "`n-> Python $latestVersion is already installed at: $installPath" -ForegroundColor Green
     Write-Host "-> Skipping download and installation steps..." -ForegroundColor Yellow
-} else {
+}
+else {
     # 创建下载目录
     if (-Not (Test-Path -Path $downloadDir)) {
         Write-Host "-> Directory not found, creating: $downloadDir" -ForegroundColor Yellow
@@ -66,6 +67,7 @@ if ($userPath -notmatch [regex]::Escape($pythonScriptsPath)) {
 if ($pathUpdated) {
     [Environment]::SetEnvironmentVariable("Path", $userPath, "User")
     Write-Host "-> User environment variables updated!" -ForegroundColor Green
-} else {
+}
+else {
     Write-Host "-> Environment variables are already up to date." -ForegroundColor Green
 }
