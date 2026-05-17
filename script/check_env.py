@@ -1,197 +1,108 @@
-# import platform
-# import shutil
-# import subprocess
-# import sys
-# import json
-# import argparse
+import shutil
+import subprocess
+import sys
+import json
+import re
+import platform
 
-# # 控制台输出颜色配置 (ANSI 转义码)
-# class Colors:
-#     GREEN = "\033[92m"
-#     RED = "\033[91m"
-#     YELLOW = "\033[93m"
-#     CYAN = "\033[96m"
-#     RESET = "\033[0m"
-
-# def check_command(tool_name, cmd_name, version_flag="--version", get_version=True):
-#     """
-#     检查指定命令并返回结构化的字典数据。
-#     """
-#     path = shutil.which(cmd_name)
-
-#     # 基础结构化数据
-#     result = {
-#         "tool_name": tool_name,
-#         "command": cmd_name,
-#         "installed": False,
-#         "path": None,
-#         "version": None,
-#         "status": "未安装，或其路径未添加到系统环境变量 (PATH) 中"
-#     }
-
-#     if not path:
-#         return result
-
-#     result["installed"] = True
-#     result["path"] = path
-
-#     if not get_version:
-#         result["status"] = "已安装 (跳过版本检查以防弹窗)"
-#         return result
-
-#     try:
-#         creationflags = 0
-#         if platform.system() == "Windows":
-#             creationflags = subprocess.CREATE_NO_WINDOW
-
-#         process_result = subprocess.run(
-#             f"{cmd_name} {version_flag}",
-#             capture_output=True,
-#             text=True,
-#             shell=True,
-#             timeout=5,
-#             creationflags=creationflags,
-#         )
-
-#         output = process_result.stdout.strip() or process_result.stderr.strip()
-#         version_info = output.split("\n")[0] if output else "获取成功，但无输出"
-
-#         result["version"] = version_info
-#         result["status"] = "正常"
-
-#     except subprocess.TimeoutExpired:
-#         result["status"] = "获取版本信息超时"
-#     except Exception as e:
-#         result["status"] = f"无法执行命令 ({e})"
-
-#     return result
-
-# def print_human_readable(env_info, tools_data):
-#     """打印适合人类阅读的彩色控制台输出"""
-#     print(f"\n{Colors.CYAN}============== 开发环境自检脚本 =============={Colors.RESET}")
-#     print(f"系统架构: {env_info['architecture']}")
-#     print(f"系统类型: {Colors.CYAN}{env_info['os_type']} {env_info['os_release']}{Colors.RESET}")
-#     print(f"执行脚本的 Python: v{env_info['python_version']}")
-#     print(f"{Colors.CYAN}----------------------------------------------{Colors.RESET}\n")
-
-#     if env_info['os_type'] == "Windows":
-#         print(f"开始安静检测 Windows 核心 C++ 及交叉编译工具链...\n")
-
-#         for tool in tools_data:
-#             if not tool["installed"]:
-#                 print(f"{Colors.RED}[FAIL] {tool['tool_name']}{Colors.RESET}")
-#                 print(f"    - 状态: {tool['status']}\n")
-#             elif tool["status"] == "正常":
-#                 print(f"{Colors.GREEN}[OK] {tool['tool_name']}{Colors.RESET}")
-#                 print(f"    - 路径: {tool['path']}")
-#                 print(f"    - 版本: {tool['version']}\n")
-#             elif tool["status"].startswith("已安装"):
-#                 print(f"{Colors.GREEN}[OK] {tool['tool_name']}{Colors.RESET}")
-#                 print(f"    - 路径: {tool['path']}")
-#                 print(f"    - 状态: {tool['status']}\n")
-#             else:
-#                 print(f"{Colors.YELLOW}[WARN] {tool['tool_name']}{Colors.RESET}")
-#                 print(f"    - 路径: {tool['path']}")
-#                 print(f"    - 状态: {tool['status']}\n")
-#     else:
-#          print(f"{Colors.YELLOW}当前为 {env_info['os_type']} 环境，跳过 Windows 专属工具链检查。{Colors.RESET}\n")
-
-#     print(f"{Colors.CYAN}=============================================={Colors.RESET}\n")
-
-# def main():
-#     # 1. 解析命令行参数
-#     parser = argparse.ArgumentParser(description="开发环境自检脚本")
-#     parser.add_argument("--json", action="store_true", help="输出结构化的 JSON 格式数据")
-#     args = parser.parse_args()
-
-#     # 2. 收集系统环境信息
-#     env_info = {
-#         "architecture": platform.machine(),
-#         "os_type": platform.system(),
-#         "os_release": platform.release(),
-#         "python_version": sys.version.split(' ')[0]
-#     }
-
-#     # 3. 收集工具信息
-#     tools_data = []
-#     if env_info["os_type"] == "Windows":
-#         tools_data.extend([
-#             check_command("Git", "git"),
-#             check_command("CMake", "cmake"),
-#             check_command("Visual Studio Code", "code", get_version=False),
-#             check_command("LLVM-MinGW (C 编译器 clang)", "clang"),
-#             check_command("LLVM-MinGW (C++ 编译器 clang++)", "clang++"),
-#             check_command("Python", "python")
-#         ])
-
-#     # 4. 根据参数决定输出格式
-#     if args.json:
-#         # 输出结构化 JSON
-#         final_output = {
-#             "system_info": env_info,
-#             "tools": tools_data
-#         }
-#         # indent=4 保证打印出来的 JSON 带有缩进，ensure_ascii=False 保证中文正常显示
-#         print(json.dumps(final_output, indent=4, ensure_ascii=False))
-#     else:
-#         # 默认输出彩色文本
-#         print_human_readable(env_info, tools_data)
-
-# if __name__ == "__main__":
-#     main()
-#     exit(0)
+# 定义需要检查的工具组件配置
+COMPONENTS = {
+    "git": {"cmd": "git", "args": ["--version"], "line_idx": 0},
+    "cmake": {"cmd": "cmake", "args": ["--version"], "line_idx": 0},
+    "python": {"type": "internal"},  # 特殊处理：使用内置模块获取
+    "vscode": {
+        "cmd": "code.cmd" if sys.platform == "win32" else "code",
+        "args": ["--version"],
+        "line_idx": 0,
+    },
+    "llvm": {"cmd": "clang", "args": ["--version"], "line_idx": 0},
+}
 
 
-# # import sys
-# # import json
+def clean_version_string(raw_str: str) -> str:
+    """从原始字符串中提取 x.y 或 x.y.z 格式的版本号"""
+    match = re.search(r"(\d+\.\d+(?:\.\d+)?)", raw_str)
+    return match.group(1) if match else raw_str
 
 
-# # def main():
-# #     # ...
-# #     # 构造 JSON 响应
-# #     # response = {"additionalContext": "环境检查未通过：需要 Python 3.12 或更高版本。"}
-# #     # print(json.dumps(response))
+def get_tool_version(cmd: str, args: list, line_idx: int) -> str | None:
+    """通过命令行获取工具版本号，如果未安装则返回 None"""
+    try:
+        # 优先获取可执行文件的绝对路径，避免别名问题
+        path = shutil.which(cmd)
+        if not path:
+            return None
 
-# #     with open('hook_debug.log', 'w') as f:
-# #         f.write('SessionStart hook executed!\n')
+        result = subprocess.run(
+            [path] + args,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=True,
+        )
+        lines = result.stdout.strip().split("\n")
 
-# #     condition_met = False
+        if lines and len(lines) > line_idx:
+            raw_version = lines[line_idx].strip()
+            return clean_version_string(raw_version)
 
-# #     if not condition_met:
-# #         response = {
-# #             "continue": True,
-# #             "hookSpecificOutput": {
-# #                 "hookEventName": "SessionStart",
-# #                 "additionalContext": "环境检查未通过：需要 Python 3.12 或更高版本。"
-# #             }
-# #         }
-# #         # 关键：这里用 print 输出到 stdout
-# #         print(json.dumps(response))
-# #         sys.exit(0)
+        return "unknown_version"
 
-# #     sys.exit(0)
-
-
-import sys, json
+    except subprocess.CalledProcessError:
+        return "unknown_version"
+    except Exception as e:
+        print(f"[DEBUG] Error getting {cmd} version: {str(e)}", file=sys.stderr)
+        return None
 
 
 def main():
-    # 模拟环境检查结果
-    condition_met = False
+    additional_context = {}
 
-    if not condition_met:
-        # 构造符合 Claude Code 规范的上下文注入消息
-        response = {
-            "continue": True,  # 会话继续
-            "hookSpecificOutput": {
-                "hookEventName": "SessionStart",
-                "additionalContext": "环境检查未通过：需要 Python 3.12 或更高版本。",
-            },
-        }
-        # 将 JSON 响应打印到 stdout
-        print(json.dumps(response))
-        sys.exit(0)  # 成功退出
-    # ...
+    for key, info in COMPONENTS.items():
+        # 1. 拦截特殊内部模块处理 (如 Python)
+        if info.get("type") == "internal":
+            if key == "python":
+                # 直接通过内置模块获取 Python 版本，绕过 WindowsApps 商店别名陷阱
+                additional_context[key] = (True, platform.python_version())
+            continue
+
+        # 2. 常规命令行工具版本检查
+        cmd = info["cmd"]
+        version = get_tool_version(cmd, info["args"], info["line_idx"])
+
+        if version:
+            additional_context[key] = (True, version)
+        else:
+            additional_context[key] = (False, "not_found")
+
+    # 3. 检查核心工具，决定是否继续会话
+    required_tools = ["git", "python", "vscode", "llvm"]
+    continue_session = True
+
+    for tool in required_tools:
+        # 检查 additional_context 元组中的布尔值 (index 0)
+        if tool in additional_context and not additional_context[tool][0]:
+            continue_session = False
+            break
+
+    # 4. 构造结构化的 JSON Hook 响应
+    response_payload = {
+        "continue": continue_session,
+        "hookSpecificOutput": {
+            "hookEventName": "SessionStart",
+            "additionalContext": additional_context,
+        },
+    }
+
+    # 5. 根据继续状态重定向输出流
+    output_json = json.dumps(response_payload, ensure_ascii=False, indent=2)
+
+    if continue_session:
+        print(output_json, file=sys.stdout)
+        sys.exit(0)
+    else:
+        print(output_json, file=sys.stderr)
+        sys.exit(1)  # 返回非 0 状态码，进一步确保主程序识别到异常并阻断
 
 
 if __name__ == "__main__":
