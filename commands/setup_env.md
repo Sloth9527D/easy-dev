@@ -1,6 +1,7 @@
 ---
 allowed-tools: Bash(python), Bash(powershell)
 description: 检查开发环境(CMake, Git, VS Code, LLVM, Python)状态与操作系统，并在工具缺失时自动调用 PowerShell 脚本执行安装。
+model: deepseek-v4-flash
 ---
 
 # 🛠️ 自动化开发环境部署助手
