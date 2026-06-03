@@ -1,7 +1,6 @@
 ---
-allowed-tools: Bash(git status), Bash(git diff*), Bash(git add), Bash(git commit), Bash(git push), Bash(git branch*), Bash(git pull), Bash(git remote*)
+allowed-tools: PowerShell(git *)
 description: 遵循 Conventional Commits 规范，智能分析代码变更并分步执行 Git 提交与推送（PowerShell 环境）
-model: deepseek-v4-flash
 ---
 
 # 自动化 Git 提交助手
