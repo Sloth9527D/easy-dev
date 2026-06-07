@@ -4,6 +4,8 @@
 """
 from __future__ import annotations
 
+from pathlib import Path
+
 from ..core import proc
 from ..core.base import PlatformRegistry
 from ..core.config import Config, InstallError
@@ -81,6 +83,53 @@ def install_claude(cfg: Config) -> None:
     proc.try_run(["claude", "--version"])
 
 
+def install_ccswith(cfg: Config) -> None:
+    """ccswith：从 GitHub release 拉取最新版 Linux 资产，解压并通过 symlink 暴露到 ~/.local/bin。"""
+    # TODO(setup): 替换为真实仓库 owner/repo 与资产命名规则。
+    repo = "TODO/ccswith"
+    proxy = cfg.proxy or ""
+    proxy_prefix = f"export HTTP_PROXY='{proxy}' HTTPS_PROXY='{proxy}'; " if proxy else ""
+    step(f"\n从 GitHub API 获取 {repo} 最新 release...")
+    try:
+        rel = net.github_latest(repo, proxy)
+        version = rel["tag_name"]
+        # TODO(setup): 按真实资产名调整（占位：ccswith-{version}-linux-x86_64.tar.gz）
+        asset_name = f"ccswith-{version}-linux-x86_64.tar.gz"
+        asset = next((x for x in rel["assets"] if x["name"] == asset_name), None)
+        if asset is None:
+            raise InstallError(f"未找到匹配的发行资产: {asset_name}")
+        url = asset["browser_download_url"]
+    except InstallError:
+        raise
+    except Exception as e:
+        raise InstallError(f"获取 {repo} 最新 release 失败: {e}") from e
+
+    install_path = Path.home() / ".local" / "ccswith" / version
+    # TODO(setup): 按真实可执行文件名调整（占位：ccswith）
+    exe = install_path / "ccswith"
+    bin_link = Path.home() / ".local" / "bin" / "ccswith"
+    if exe.exists():
+        warn(f"ccswith {version} 已安装于: {install_path}，跳过。")
+    else:
+        install_path.parent.mkdir(parents=True, exist_ok=True)
+        step(f"\n下载并解压 ccswith {version}...")
+        archive_path = Path("/tmp") / asset_name
+        cmd = proxy_prefix + (
+            f"curl -fsSL -o {archive_path} {url} && "
+            f"mkdir -p {install_path} && tar -xzf {archive_path} -C {install_path} --strip-components=1"
+        )
+        if proc.run_shell(cmd) != 0:
+            raise InstallError("ccswith 下载/解压失败。")
+        if not cfg.keep_archive:
+            archive_path.unlink(missing_ok=True)
+        ok("ccswith 部署成功!")
+    bin_link.parent.mkdir(parents=True, exist_ok=True)
+    if bin_link.exists() or bin_link.is_symlink():
+        bin_link.unlink()
+    bin_link.symlink_to(exe)
+    proc.try_run(["ccswith", "--version"])
+
+
 def install_omposh(cfg: Config) -> None:
     """Oh My Posh：官方安装脚本。"""
     proxy = cfg.proxy or ""
@@ -101,6 +150,7 @@ REGISTRY = PlatformRegistry(
         "node": install_node,
         "claude": install_claude,
         "omposh": install_omposh,
+        "ccswith": install_ccswith,
     },
     all_order=["git", "cmake", "python", "vscode", "llvm", "node"],
 )

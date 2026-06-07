@@ -175,6 +175,47 @@ def install_claude(cfg: Config) -> None:
     proc.try_run(["claude", "--version"])
 
 
+def install_ccswith(cfg: Config) -> None:
+    """ccswith：从 GitHub release 拉取最新版 Windows 资产，解压并加入 PATH。"""
+    # TODO(setup): 替换为真实仓库 owner/repo 与资产命名规则（见 install_omposh 风格）。
+    repo = "TODO/ccswith"
+    step(f"\n从 GitHub API 获取 {repo} 最新 release...")
+    try:
+        rel = net.github_latest(repo, cfg.proxy)
+        version = rel["tag_name"]
+        # TODO(setup): 按真实资产名调整（占位：ccswith-{version}-windows-x86_64.zip）
+        asset_name = f"ccswith-{version}-windows-x86_64.zip"
+        asset = next((x for x in rel["assets"] if x["name"] == asset_name), None)
+        if asset is None:
+            raise InstallError(f"未找到匹配的发行资产: {asset_name}")
+        url = asset["browser_download_url"]
+    except InstallError:
+        raise
+    except Exception as e:
+        raise InstallError(f"获取 {repo} 最新 release 失败: {e}") from e
+
+    install_path = cfg.dev_root / f"ccswith-{version}"
+    bin_path = install_path / "bin"
+    # TODO(setup): 按真实可执行文件名调整（占位：ccswith.exe）
+    exe = bin_path / "ccswith.exe"
+    if exe.exists():
+        warn(f"ccswith {version} 已安装于: {install_path}，跳过。")
+    else:
+        cfg.ensure_dirs()
+        step(f"\n下载并解压 ccswith {version}...")
+        a = net.download(url, cfg.download_dir / asset_name, cfg.proxy)
+        archive.extract_zip_flatten(a, install_path)
+        if not cfg.keep_archive:
+            a.unlink(missing_ok=True)
+        ok("ccswith 部署成功!")
+    env.path_msg(env.add_to_user_path(bin_path), "ccswith")
+    proc.try_run(["ccswith", "--version"])
+    print_summary("CCSWITH INSTALL SUMMARY", {
+        "Version": version, "Install Dir": str(install_path),
+        "Executable": str(exe), "Added to PATH": str(bin_path),
+    })
+
+
 def install_omposh(cfg: Config) -> None:
     """Oh My Posh：通过 winget 安装并装 Cascadia Mono 字体。"""
     step("\n通过 winget 安装 Oh My Posh...")
@@ -202,6 +243,7 @@ REGISTRY = PlatformRegistry(
         "node": install_node,
         "claude": install_claude,
         "omposh": install_omposh,
+        "ccswith": install_ccswith,
     },
     all_order=["git", "cmake", "python", "vscode", "llvm", "node"],
 )
