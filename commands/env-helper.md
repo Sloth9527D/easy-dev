@@ -1,13 +1,14 @@
 ---
 allowed-tools: Bash(python), Bash(powershell)
-description: 检查开发环境(CMake, Git, VS Code, LLVM, Python)状态与操作系统，并在工具缺失时自动调用统一 Python 安装 CLI 完成安装（支持 Windows 与 Linux）。
+description: 检查开发环境(CMake, Git, VS Code, LLVM, Python)状态与操作系统，并在工具缺失时自动调用统一 Python 安装 CLI 完成安装；也可按用户要求更新或卸载已安装的工具（支持 Windows 与 Linux）。
 model: deepseek-v4-flash
 ---
 
 # 自动化开发环境部署助手
 
 你是一个高级环境配置助手。任务是诊断当前系统工具链状态，并在发现缺失时使用统一的
-Python 安装 CLI 自动完成安装。该流程同时支持 Windows 与 Linux。请严格按以下阶段顺序执行。
+Python 安装 CLI 自动完成安装；该 CLI 同样支持更新已安装工具到最新版本、或卸载不再需要的工具。
+该流程同时支持 Windows 与 Linux。请严格按以下阶段顺序执行。
 
 ## 阶段 0：检查 Python 是否可用
 
@@ -78,6 +79,11 @@ python script/install_tools.py <工具1> <工具2> ...
 
 询问用户是否同意安装上述缺失工具。
 
+同时告知用户：每个已注册工具（含已安装的）都支持更新到最新版本或卸载，分别对应
+`--update` / `--uninstall` 标志（与默认的安装行为互斥，不会在同一次调用里混用）。
+默认不主动给已正常工作的工具提议更新/卸载——只有当用户明确提出（如"把 cmake 更新一下"
+"卸载 nvim"）时，才在阶段 3 追加执行。
+
 ## 阶段 3：执行安装
 
 获得用户确认后：
@@ -95,6 +101,18 @@ python script/install_tools.py <工具1> <工具2> ...
 4. 观察命令输出，向用户报告每个工具的安装结果与失败项（若有）。
 5. 安装完毕后提示：部分 PATH 变更需重启终端窗口才能生效；可重新运行
    `python script/check_env.py` 验证最终结果。
+6. 若用户在阶段 2 提出了更新或卸载某些工具的要求，分开执行对应命令（不要与上面的安装
+   命令合并到同一次调用）：
 
-备注：`install_tools.py --list` 可列出全部可装工具（另含 node / claude /
-omposh，但它们不在本环境诊断范围内，仅在用户明确要求时安装）。
+   ```
+   python script/install_tools.py --update <工具1> <工具2> ...
+   python script/install_tools.py --uninstall <工具1> <工具2> ...
+   ```
+
+   更新会先探测该工具的最新版本（Windows 上 cmake/git/python/node 走官方版本源动态查询，
+   Linux 统一走系统包管理器），再卸载旧版本并安装新版本，避免新旧版本残留与 PATH 重复项。
+   卸载是按工具尽力清理已知安装产物；个别脚本式安装的工具（如 claude）可能有用户目录下的
+   配置/缓存残留，命令输出会提示是否需要手动清理。
+
+备注：`install_tools.py --list` 可列出全部可装工具（另含 node / nvim / claude /
+omposh，但它们不在本环境诊断范围内，仅在用户明确要求时安装/更新/卸载）。

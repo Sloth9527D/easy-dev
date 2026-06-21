@@ -34,8 +34,11 @@ def main(argv: list[str] | None = None) -> int:
         description="easy-dev 跨平台工具链统一安装 CLI (Windows + Linux)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument("tools", nargs="*", help="要安装的工具 (用 --list 查看)")
-    parser.add_argument("--all", action="store_true", help="安装常用工具集")
+    parser.add_argument("tools", nargs="*", help="要操作的工具 (用 --list 查看)")
+    parser.add_argument("--all", action="store_true", help="操作常用工具集")
+    action_group = parser.add_mutually_exclusive_group()
+    action_group.add_argument("--update", action="store_true", help="更新已选工具到最新版本 (而非安装)")
+    action_group.add_argument("--uninstall", action="store_true", help="卸载已选工具 (而非安装)")
     parser.add_argument("--list", action="store_true", help="列出所有可安装工具后退出")
     parser.add_argument("--dev-root", help=r"安装根目录 (Windows 默认 E:\Dev；Linux 由包管理器决定)")
     parser.add_argument("--download-dir", help=r"下载目录 (Windows 默认 E:\Downloads)")
@@ -69,25 +72,32 @@ def main(argv: list[str] | None = None) -> int:
         err(f"未知工具: {', '.join(unknown)}。可用: {', '.join(registry.tools)}")
         return 1
 
+    if args.uninstall:
+        action_name, action_fns = "卸载", registry.uninstallers
+    elif args.update:
+        action_name, action_fns = "更新", registry.updaters
+    else:
+        action_name, action_fns = "安装", registry.tools
+
     cfg = build_config(args)
     failures: list[str] = []
     for name in selected:
         print()
-        step(f"=== 安装 {name} ===")
+        step(f"=== {action_name} {name} ===")
         try:
-            registry.tools[name](cfg)
+            action_fns[name](cfg)
             ok(f"{name} 处理完成。")
         except InstallError as e:
-            err(f"{name} 安装失败: {e}")
+            err(f"{name} {action_name}失败: {e}")
             failures.append(name)
         except Exception as e:  # noqa: BLE001 - 顶层兜底，单个工具失败不影响其余
-            err(f"{name} 安装出现意外错误: {e}")
+            err(f"{name} {action_name}出现意外错误: {e}")
             failures.append(name)
 
     print()
     if failures:
-        err(f"以下工具安装失败: {', '.join(failures)}")
+        err(f"以下工具{action_name}失败: {', '.join(failures)}")
         warn("提示：部分 PATH 变更需重启终端后生效，可重新运行 check_env.py 验证。")
         return 1
-    ok("全部完成！部分 PATH 变更需重启终端后生效，可运行 check_env.py 验证。")
+    ok(f"全部{action_name}完成！部分 PATH 变更需重启终端后生效，可运行 check_env.py 验证。")
     return 0

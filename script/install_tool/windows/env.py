@@ -42,11 +42,49 @@ def add_to_user_path(new_dir: str | Path, prepend: bool = True) -> bool:
     return True
 
 
+def remove_from_user_path(dir_: str | Path) -> bool:
+    """将 dir_ 从当前用户 (HKCU) 的 PATH 中移除 (add_to_user_path 的逆操作)。
+
+    返回 True 表示发生了修改。
+    """
+    dir_ = str(dir_)
+    key = winreg.OpenKey(
+        winreg.HKEY_CURRENT_USER, "Environment", 0,
+        winreg.KEY_READ | winreg.KEY_WRITE,
+    )
+    try:
+        try:
+            current, _ = winreg.QueryValueEx(key, "Path")
+        except FileNotFoundError:
+            return False
+
+        parts = [p for p in current.split(";") if p]
+        kept = [p for p in parts if os.path.normcase(p) != os.path.normcase(dir_)]
+        if len(kept) == len(parts):
+            return False
+
+        new_value = ";".join(kept)
+        write_type = winreg.REG_EXPAND_SZ if "%" in new_value else winreg.REG_SZ
+        winreg.SetValueEx(key, "Path", 0, write_type, new_value)
+    finally:
+        winreg.CloseKey(key)
+
+    _broadcast_env_change()
+    return True
+
+
 def path_msg(changed: bool, name: str) -> None:
     if changed:
         ok(f"已将 {name} 添加到用户 PATH。")
     else:
         ok(f"{name} 已在用户 PATH 中。")
+
+
+def unpath_msg(changed: bool, name: str) -> None:
+    if changed:
+        ok(f"已将 {name} 从用户 PATH 中移除。")
+    else:
+        ok(f"{name} 不在用户 PATH 中，无需移除。")
 
 
 def _broadcast_env_change() -> None:
@@ -91,3 +129,37 @@ def register_vscode_context_menu() -> None:
         ok("右键菜单注册成功!")
     except Exception as e:
         err(f"右键菜单注册失败: {e}")
+
+
+def _delete_key_tree(root: int, path: str) -> None:
+    """递归删除注册表项 (winreg.DeleteKey 只能删无子项的叶子键)。"""
+    try:
+        key = winreg.OpenKey(root, path, 0, winreg.KEY_ALL_ACCESS)
+    except FileNotFoundError:
+        return
+    try:
+        while True:
+            try:
+                sub = winreg.EnumKey(key, 0)
+            except OSError:
+                break
+            _delete_key_tree(root, f"{path}\\{sub}")
+    finally:
+        winreg.CloseKey(key)
+    winreg.DeleteKey(root, path)
+
+
+def unregister_vscode_context_menu() -> None:
+    """移除 register_vscode_context_menu 注册的 HKCU 右键菜单项。"""
+    step("\n移除 VS Code 右键菜单...")
+    bases = [
+        r"Software\Classes\*\shell\VSCode",
+        r"Software\Classes\Directory\shell\VSCode",
+        r"Software\Classes\Directory\Background\shell\VSCode",
+    ]
+    try:
+        for base in bases:
+            _delete_key_tree(winreg.HKEY_CURRENT_USER, base)
+        ok("右键菜单已移除。")
+    except Exception as e:
+        err(f"右键菜单移除失败: {e}")

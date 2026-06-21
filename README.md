@@ -42,14 +42,14 @@
 ## 验证安装
 
 1. 重启一个 Claude Code 会话——`SessionStart` 钩子会自动运行环境诊断，可在会话上下文里看到 `git / cmake / python / vscode / llvm` 等工具的版本或 `not_found` 标记。
-2. 输入 `/` 查看命令列表，应能看到 `cfg_init`、`commit`、`setup_env`、`setup_skills`。
+2. 输入 `/` 查看命令列表，应能看到 `cfg_init`、`commit`、`env-helper`、`setup_skills`。
 3. 技能（如 `dev-flow`、`code-inspect`、`file2md` 等）会在匹配到相关请求时自动触发，无需手动调用。
 
 如改动了插件文件，用 `/reload-plugins` 重新加载；排查问题用 `/doctor`。
 
 ## 包含的能力
 
-- **Slash 命令**（`commands/`）：`cfg_init`（初始化 Git 等配置）、`commit`（Conventional Commits 提交）、`setup_env`（诊断并安装缺失工具链）、`setup_skills`（安装常用 agent skills）。
+- **Slash 命令**（`commands/`）：`cfg_init`（初始化 Git 等配置）、`commit`（Conventional Commits 提交）、`env-helper`（诊断环境并安装/更新/卸载工具链）、`setup_skills`（安装常用 agent skills）。
 - **技能**（`skills/`）：`dev-flow`（7 阶段研发工作流）、`code-inspect`（独立代码检视）、`file2md`（任意文件转 Markdown）、`ctx-gen`（生成项目上下文文档）、`bak-claude-cfg`（备份 Claude 配置到 GitHub）、`karpathy-guidelines`（编码行为准则）。
 - **钩子**（`hooks/`）：`SessionStart` 时运行 `script/check_env.py` 诊断环境。
 - **安装 CLI**（`script/`）：`python script/install_tools.py <工具...>` 或 `--all` 跨平台安装 Git / CMake / LLVM-MinGW / Python / Node.js / VS Code / Oh My Posh / Claude CLI 等；`--list` 查看全部。

@@ -11,7 +11,7 @@
 ```
 .claude-plugin/              # 插件标识与市场元数据（plugin.json / marketplace.json）
 hooks/hooks.json             # SessionStart 钩子 → check_env.py；Stop 钩子 → notify_done.py
-commands/                    # slash 命令（cfg_init / commit / setup_env / setup_skills / fix_build），多为编排安装 CLI 的提示词
+commands/                    # slash 命令（cfg_init / commit / env-helper / setup_skills / fix_build），多为编排安装 CLI 的提示词
 skills/                      # 技能（bak-claude-cfg / file2md / karpathy-guidelines / ctx-gen / code-inspect / dev-flow / dt），含 SKILL.md、可选 evals/、可选 stages/ 等附属文件
 script/
   check_env.py               # 环境诊断脚本（Python）
@@ -31,9 +31,9 @@ script/
 
 ## 命令与技能层
 
-`commands/*.md` 与 `skills/*/SKILL.md` 都是带 YAML frontmatter 的提示词文件（非可执行代码），由 Claude Code 在运行时加载。多数命令是对底层脚本的“编排说明”而非独立逻辑——例如 `setup_env` 命令完整描述了「检查 Python → 跑 check_env.py → 解析缺失工具 → 调 install_tools.py」的分阶段流程。修改这类行为时，往往要同时改 frontmatter 描述、提示词步骤，以及它所调用的脚本。
+`commands/*.md` 与 `skills/*/SKILL.md` 都是带 YAML frontmatter 的提示词文件（非可执行代码），由 Claude Code 在运行时加载。多数命令是对底层脚本的“编排说明”而非独立逻辑——例如 `env-helper` 命令完整描述了「检查 Python → 跑 check_env.py → 解析缺失工具 → 调 install_tools.py」的分阶段流程。修改这类行为时，往往要同时改 frontmatter 描述、提示词步骤，以及它所调用的脚本。
 
-frontmatter 两个约定值得注意：(1) `allowed-tools` 收窄该命令可用的工具，且常同时声明 Bash 与 PowerShell 两种形式以跨平台（如 `Bash(python), PowerShell(python *)`）；(2) 纯编排类命令（`cfg_init` / `setup_env` / `setup_skills`）固定 `model: deepseek-v4-flash` 走更省的模型，而需要更强推理的 `commit` 不固定模型。
+frontmatter 两个约定值得注意：(1) `allowed-tools` 收窄该命令可用的工具，且常同时声明 Bash 与 PowerShell 两种形式以跨平台（如 `Bash(python), PowerShell(python *)`）；(2) 纯编排类命令（`cfg_init` / `env-helper` / `setup_skills`）固定 `model: deepseek-v4-flash` 走更省的模型，而需要更强推理的 `commit` 不固定模型。
 
 ## 7 阶段研发工作流（dev-flow 技能）
 
@@ -65,5 +65,6 @@ frontmatter 两个约定值得注意：(1) `allowed-tools` 收窄该命令可用
 - 安装 CLI 跨平台：Windows 下载官方压缩包/安装器并写用户级 PATH；Linux 调用系统包管理器（apt/dnf/yum/pacman/zypper）。
 - 安装路径、下载目录、代理均可配置（`--dev-root` / `--download-dir` / `--proxy`），默认值随平台变化（Windows 默认 `E:\Dev`、`E:\Downloads`）。
 - 安装具有幂等性（Windows 检查目标目录是否已存在；Linux 依赖包管理器自身）。单个工具失败不中断其余工具，结尾汇总失败列表。
-- 可装工具多于环境诊断范围：`check_env.py` 只看 git/cmake/code/clang/python，而安装 CLI 还支持 node / claude / omposh / ccswith 等（`--list` 查看全部）。`PlatformRegistry.all_order` 决定 `--all` 安装哪些工具，会刻意排除依赖外部源的可选项。
+- 可装工具多于环境诊断范围：`check_env.py` 只看 git/cmake/code/clang/python，而安装 CLI 还支持 node / nvim / claude / omposh / ccswith 等（`--list` 查看全部）。`PlatformRegistry.all_order` 决定 `--all` 安装哪些工具，会刻意排除依赖外部源的可选项（nvim 作为可选的备选编辑器同样不进 `--all`，需显式指定 `nvim` 才会安装）。
+- 每个已注册工具同时具备安装/更新/卸载三种能力：`python script/install_tools.py <工具...>` 默认安装；加 `--update` 更新到最新版（先卸载旧版本目录再装新版，避免新旧版本残留与 PATH 重复项）；加 `--uninstall` 卸载（二者互斥）。`PlatformRegistry` 在构造时校验 `tools`/`updaters`/`uninstallers` 三个字典的键集合一致，新增工具时三者必须同时补齐。Windows 下 cmake/git/python/node 的"更新"会动态查询官方最新版本（GitHub Releases / nodejs.org dist 索引 / python.org API），不再依赖代码里写死的版本号；Linux 则统一走系统包管理器的升级/卸载命令。claude/omposh 等脚本式安装的"更新"是重跑官方安装脚本，"卸载"为尽力删除已知产物，可能有残留需手动清理（脚本会提示）。
 - `install_tool/windows/scripts/` 下保留了原始 `.ps1` 脚本（含命名有误的 `install_vscode.ps1`，实际安装 VS Code System Installer），现已由 Python CLI 取代，仅作 Python 缺失时的引导兜底。

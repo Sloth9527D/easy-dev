@@ -26,7 +26,7 @@ Skills CLI 依赖 Node.js（提供 `npx`）。先确认可用：
 npx --version
 ```
 
-若失败（找不到 npx / Node），提示用户：本命令需要 Node.js，可先运行 `/setup_env` 或
+若失败（找不到 npx / Node），提示用户：本命令需要 Node.js，可先运行 `/env-helper` 或
 `python script/install_tools.py node` 安装 Node，再重新执行本命令；然后终止后续阶段。
 
 ## 阶段 1：确定要安装的 skills

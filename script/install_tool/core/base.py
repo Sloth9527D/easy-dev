@@ -21,9 +21,16 @@ class InstallerFn(Protocol):
 class PlatformRegistry:
     """某一平台暴露的能力集合。
 
-    tools:      工具名 -> 安装函数。
+    tools / updaters / uninstallers: 工具名 -> 对应操作的函数；三者键集合必须一致，
+        即每个注册的工具都同时具备安装、更新、卸载三种能力。
     all_order:  `--all` 时按此顺序安装的工具子集 (排除依赖外部源的可选项)。
     """
 
     tools: dict[str, "Callable[[Config], None]"]
+    updaters: dict[str, "Callable[[Config], None]"]
+    uninstallers: dict[str, "Callable[[Config], None]"]
     all_order: list[str]
+
+    def __post_init__(self) -> None:
+        if self.tools.keys() != self.updaters.keys() or self.tools.keys() != self.uninstallers.keys():
+            raise ValueError("tools / updaters / uninstallers 的工具键集合必须一致。")

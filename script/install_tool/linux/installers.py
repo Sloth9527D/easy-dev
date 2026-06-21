@@ -4,12 +4,13 @@
 """
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
-from ..core import proc
+from ..core import net, proc
 from ..core.base import PlatformRegistry
 from ..core.config import Config, InstallError
-from ..core.console import ok, warn
+from ..core.console import ok, step, warn
 from ..core.gittemplate import configure_git_template
 from . import packages
 
@@ -20,6 +21,7 @@ _PACKAGES: dict[str, dict[str, list[str]]] = {
     "git": {"default": ["git"]},
     "node": {"default": ["nodejs", "npm"]},
     "python": {"default": ["python3", "python3-pip"], "pacman": ["python", "python-pip"]},
+    "nvim": {"default": ["neovim"]},
 }
 
 
@@ -31,14 +33,48 @@ def _pkg(tool: str) -> None:
     ok(f"{tool} 安装完成。")
 
 
+def _pkg_remove(tool: str) -> None:
+    mgr = packages.detect_package_manager()
+    spec = _PACKAGES[tool]
+    pkgs = spec.get(mgr, spec["default"]) if mgr else spec["default"]
+    packages.pkg_remove(pkgs)
+    ok(f"{tool} 卸载完成。")
+
+
+def _pkg_upgrade(tool: str) -> None:
+    mgr = packages.detect_package_manager()
+    spec = _PACKAGES[tool]
+    pkgs = spec.get(mgr, spec["default"]) if mgr else spec["default"]
+    packages.pkg_upgrade(pkgs)
+    ok(f"{tool} 更新完成。")
+
+
 def install_cmake(cfg: Config) -> None:
     _pkg("cmake")
     proc.try_run(["cmake", "--version"])
 
 
+def update_cmake(cfg: Config) -> None:
+    _pkg_upgrade("cmake")
+    proc.try_run(["cmake", "--version"])
+
+
+def uninstall_cmake(cfg: Config) -> None:
+    _pkg_remove("cmake")
+
+
 def install_llvm(cfg: Config) -> None:
     _pkg("llvm")
     proc.try_run(["clang", "--version"])
+
+
+def update_llvm(cfg: Config) -> None:
+    _pkg_upgrade("llvm")
+    proc.try_run(["clang", "--version"])
+
+
+def uninstall_llvm(cfg: Config) -> None:
+    _pkg_remove("llvm")
 
 
 def install_git(cfg: Config) -> None:
@@ -47,14 +83,55 @@ def install_git(cfg: Config) -> None:
     configure_git_template()
 
 
+def update_git(cfg: Config) -> None:
+    _pkg_upgrade("git")
+    proc.try_run(["git", "--version"])
+
+
+def uninstall_git(cfg: Config) -> None:
+    _pkg_remove("git")
+
+
 def install_python(cfg: Config) -> None:
     _pkg("python")
     proc.try_run(["python3", "--version"])
 
 
+def update_python(cfg: Config) -> None:
+    _pkg_upgrade("python")
+    proc.try_run(["python3", "--version"])
+
+
+def uninstall_python(cfg: Config) -> None:
+    _pkg_remove("python")
+
+
 def install_node(cfg: Config) -> None:
     _pkg("node")
     proc.try_run(["node", "--version"])
+
+
+def update_node(cfg: Config) -> None:
+    _pkg_upgrade("node")
+    proc.try_run(["node", "--version"])
+
+
+def uninstall_node(cfg: Config) -> None:
+    _pkg_remove("node")
+
+
+def install_nvim(cfg: Config) -> None:
+    _pkg("nvim")
+    proc.try_run(["nvim", "--version"])
+
+
+def update_nvim(cfg: Config) -> None:
+    _pkg_upgrade("nvim")
+    proc.try_run(["nvim", "--version"])
+
+
+def uninstall_nvim(cfg: Config) -> None:
+    _pkg_remove("nvim")
 
 
 def install_vscode(cfg: Config) -> None:
@@ -74,6 +151,27 @@ def install_vscode(cfg: Config) -> None:
     )
 
 
+def update_vscode(cfg: Config) -> None:
+    if proc.which("snap"):
+        cmd = " ".join(packages.sudo_prefix() + ["snap", "refresh", "code"])
+        if proc.run_shell(cmd) != 0:
+            warn("VS Code 更新可能未完全成功 (也可能已是最新版)，请检查 snap。")
+        else:
+            ok("VS Code 更新完成。")
+        return
+    warn("未检测到 snap 管理的 VS Code，请参考官方文档手动更新。")
+
+
+def uninstall_vscode(cfg: Config) -> None:
+    if proc.which("snap"):
+        cmd = " ".join(packages.sudo_prefix() + ["snap", "remove", "code"])
+        if proc.run_shell(cmd) != 0:
+            raise InstallError("snap 卸载 VS Code 失败。")
+        ok("VS Code 卸载完成。")
+        return
+    warn("未检测到 snap 管理的 VS Code，请参考官方文档手动卸载。")
+
+
 def install_claude(cfg: Config) -> None:
     """Claude CLI：官方在线安装脚本 (bash)。"""
     proxy = cfg.proxy or ""
@@ -81,6 +179,21 @@ def install_claude(cfg: Config) -> None:
     if proc.run_shell(prefix + "curl -fsSL https://claude.ai/install.sh | bash") != 0:
         raise InstallError("Claude 安装脚本执行失败。")
     proc.try_run(["claude", "--version"])
+
+
+def update_claude(cfg: Config) -> None:
+    """官方安装脚本本身具备更新能力，重新执行即可。"""
+    install_claude(cfg)
+
+
+def uninstall_claude(cfg: Config) -> None:
+    claude_bin = Path.home() / ".local" / "bin" / "claude"
+    if claude_bin.exists():
+        claude_bin.unlink()
+        ok("已删除 claude 可执行文件。")
+    else:
+        warn(f"未在 {claude_bin} 找到 claude 可执行文件，可能安装位置不同，需手动检查。")
+    warn("用户目录下的 Claude 配置/缓存（如 ~/.claude）未被清理，需要的话请手动删除。")
 
 
 def install_ccswith(cfg: Config) -> None:
@@ -130,6 +243,23 @@ def install_ccswith(cfg: Config) -> None:
     proc.try_run(["ccswith", "--version"])
 
 
+def update_ccswith(cfg: Config) -> None:
+    uninstall_ccswith(cfg)
+    install_ccswith(cfg)
+
+
+def uninstall_ccswith(cfg: Config) -> None:
+    base = Path.home() / ".local" / "ccswith"
+    bin_link = Path.home() / ".local" / "bin" / "ccswith"
+    if bin_link.exists() or bin_link.is_symlink():
+        bin_link.unlink()
+    if base.exists():
+        shutil.rmtree(base, ignore_errors=True)
+        ok("ccswith 卸载完成。")
+    else:
+        warn(f"未找到已安装的 ccswith（{base}），跳过。")
+
+
 def install_omposh(cfg: Config) -> None:
     """Oh My Posh：官方安装脚本。"""
     proxy = cfg.proxy or ""
@@ -140,6 +270,23 @@ def install_omposh(cfg: Config) -> None:
         ok("Oh My Posh 安装完成。")
 
 
+def update_omposh(cfg: Config) -> None:
+    """官方安装脚本本身具备更新能力，重新执行即可。"""
+    install_omposh(cfg)
+
+
+def uninstall_omposh(cfg: Config) -> None:
+    removed = False
+    for candidate in (Path.home() / ".local" / "bin" / "oh-my-posh", Path.home() / "bin" / "oh-my-posh"):
+        if candidate.exists():
+            candidate.unlink()
+            removed = True
+    if removed:
+        ok("Oh My Posh 卸载完成。")
+    else:
+        warn("未找到已安装的 oh-my-posh 可执行文件，可能安装位置不同，需手动检查。")
+
+
 REGISTRY = PlatformRegistry(
     tools={
         "cmake": install_cmake,
@@ -148,9 +295,34 @@ REGISTRY = PlatformRegistry(
         "python": install_python,
         "vscode": install_vscode,
         "node": install_node,
+        "nvim": install_nvim,
         "claude": install_claude,
         "omposh": install_omposh,
         "ccswith": install_ccswith,
+    },
+    updaters={
+        "cmake": update_cmake,
+        "llvm": update_llvm,
+        "git": update_git,
+        "python": update_python,
+        "vscode": update_vscode,
+        "node": update_node,
+        "nvim": update_nvim,
+        "claude": update_claude,
+        "omposh": update_omposh,
+        "ccswith": update_ccswith,
+    },
+    uninstallers={
+        "cmake": uninstall_cmake,
+        "llvm": uninstall_llvm,
+        "git": uninstall_git,
+        "python": uninstall_python,
+        "vscode": uninstall_vscode,
+        "node": uninstall_node,
+        "nvim": uninstall_nvim,
+        "claude": uninstall_claude,
+        "omposh": uninstall_omposh,
+        "ccswith": uninstall_ccswith,
     },
     all_order=["git", "cmake", "python", "vscode", "llvm", "node"],
 )

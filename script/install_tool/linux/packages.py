@@ -17,6 +17,24 @@ _PKG_MANAGERS = {
     "zypper": (["zypper", "install", "-y"], None),
 }
 
+# name -> 卸载命令
+_PKG_REMOVE_CMDS = {
+    "apt": ["apt-get", "remove", "-y"],
+    "dnf": ["dnf", "remove", "-y"],
+    "yum": ["yum", "remove", "-y"],
+    "pacman": ["pacman", "-R", "--noconfirm"],
+    "zypper": ["zypper", "remove", "-y"],
+}
+
+# name -> 升级到最新可用版本的命令 (pacman 没有单包升级语义，-S 对已安装包即视为升级)
+_PKG_UPGRADE_CMDS = {
+    "apt": ["apt-get", "install", "--only-upgrade", "-y"],
+    "dnf": ["dnf", "upgrade", "-y"],
+    "yum": ["yum", "update", "-y"],
+    "pacman": ["pacman", "-S", "--noconfirm"],
+    "zypper": ["zypper", "update", "-y"],
+}
+
 
 def detect_package_manager() -> str | None:
     """返回当前系统可用的包管理器名称，找不到返回 None。"""
@@ -53,3 +71,35 @@ def pkg_install(packages: list[str]) -> None:
     proc = subprocess.run(sudo + install_cmd + packages)
     if proc.returncode != 0:
         raise InstallError(f"{mgr} 安装失败 (退出码 {proc.returncode}): {' '.join(packages)}")
+
+
+def pkg_remove(packages: list[str]) -> None:
+    """用系统包管理器卸载一组软件包。失败抛出 InstallError。"""
+    mgr = detect_package_manager()
+    if mgr is None:
+        raise InstallError(
+            "未检测到受支持的包管理器 (apt/dnf/yum/pacman/zypper)，请手动卸载。"
+        )
+    sudo = sudo_prefix()
+    step(f"使用 {mgr} 卸载: {' '.join(packages)}")
+    proc = subprocess.run(sudo + _PKG_REMOVE_CMDS[mgr] + packages)
+    if proc.returncode != 0:
+        raise InstallError(f"{mgr} 卸载失败 (退出码 {proc.returncode}): {' '.join(packages)}")
+
+
+def pkg_upgrade(packages: list[str]) -> None:
+    """用系统包管理器将一组软件包升级到最新可用版本。失败抛出 InstallError。"""
+    mgr = detect_package_manager()
+    if mgr is None:
+        raise InstallError(
+            "未检测到受支持的包管理器 (apt/dnf/yum/pacman/zypper)，请手动更新。"
+        )
+    sudo = sudo_prefix()
+    _, refresh_cmd = _PKG_MANAGERS[mgr]
+    if refresh_cmd:
+        step(f"刷新 {mgr} 软件源...")
+        subprocess.run(sudo + refresh_cmd)
+    step(f"使用 {mgr} 更新: {' '.join(packages)}")
+    proc = subprocess.run(sudo + _PKG_UPGRADE_CMDS[mgr] + packages)
+    if proc.returncode != 0:
+        raise InstallError(f"{mgr} 更新失败 (退出码 {proc.returncode}): {' '.join(packages)}")

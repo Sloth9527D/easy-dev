@@ -1,7 +1,8 @@
-"""网络相关：带进度的下载、GitHub release 元数据获取。"""
+"""网络相关：带进度的下载、GitHub release 元数据获取、各官方源最新版本探测。"""
 from __future__ import annotations
 
 import json
+import re
 import sys
 import urllib.request
 from pathlib import Path
@@ -59,9 +60,34 @@ def download(url: str, dest: Path, proxy: str | None = None) -> Path:
     return dest
 
 
+def _fetch_json(url: str, proxy: str | None = None) -> dict:
+    opener = _build_opener(proxy)
+    with opener.open(url, timeout=60) as resp:
+        return json.loads(resp.read().decode("utf-8"))
+
+
 def github_latest(repo: str, proxy: str | None = None) -> dict:
     """获取 GitHub 仓库最新 release 元数据 (repo 形如 'mstorsjo/llvm-mingw')。"""
-    api = f"https://api.github.com/repos/{repo}/releases/latest"
-    opener = _build_opener(proxy)
-    with opener.open(api, timeout=60) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+    return _fetch_json(f"https://api.github.com/repos/{repo}/releases/latest", proxy)
+
+
+def latest_node_version(proxy: str | None = None) -> str:
+    """从 nodejs.org 官方版本索引获取最新 Node.js 版本号 (不含前导 v)。"""
+    data = _fetch_json("https://nodejs.org/dist/index.json", proxy)
+    if not data:
+        raise InstallError("nodejs.org 版本索引为空。")
+    return data[0]["version"].lstrip("v")
+
+
+def latest_python_version(proxy: str | None = None) -> str:
+    """从 python.org 官方 API 获取最新稳定 (非预发布) 版 Python 版本号。"""
+    url = (
+        "https://www.python.org/api/v2/downloads/release/"
+        "?is_published=true&pre_release=false&ordering=-release_date&page_size=10"
+    )
+    data = _fetch_json(url, proxy)
+    for item in data.get("results", []):
+        m = re.fullmatch(r"Python (\d+\.\d+\.\d+)", item.get("name", ""))
+        if m:
+            return m.group(1)
+    raise InstallError("未能从 python.org 解析出最新稳定版本号。")
