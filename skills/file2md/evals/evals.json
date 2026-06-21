@@ -1,0 +1,44 @@
+{
+  "skill_name": "file2md",
+  "evals": [
+    {
+      "id": 0,
+      "name": "single-file",
+      "prompt": "帮我把这个 PDF 转成 markdown，文件在 <INPUTS>\\spec.pdf",
+      "expected_output": "在 spec.pdf 同目录生成 spec.md，包含 PDF 的正文（标题 Widget API Specification、GET /widgets 端点等）。",
+      "files": ["spec.pdf"],
+      "assertions": [
+        "在源文件同目录生成了 spec.md",
+        "spec.md 非空",
+        "spec.md 包含标题文字 \"Widget API Specification\"",
+        "spec.md 包含端点信息 \"GET /widgets\""
+      ]
+    },
+    {
+      "id": 1,
+      "name": "batch",
+      "prompt": "我这个文件夹里有一堆 word、excel 和 csv，全部转成 md：<INPUTS>",
+      "expected_output": "目录下每个文件都生成同名 .md：quarterly_report.md、sales_data.md、notes.md，内容正确。",
+      "files": ["quarterly_report.docx", "sales_data.xlsx", "notes.csv"],
+      "assertions": [
+        "三个文件都生成了对应的 .md（quarterly_report.md、sales_data.md、notes.md）",
+        "sales_data.md 含 Markdown 表格且有数据 EMEA/152",
+        "quarterly_report.md 含 \"Quarterly Report\" 标题与要点条目",
+        "notes.md 含 csv 数据（如 Alice、Berlin）",
+        "汇报中说明了批量结果（成功/失败数量或清单）"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "scanned-empty",
+      "prompt": "把这个扫描版 pdf 转成 markdown 看看：<INPUTS>\\scan.pdf",
+      "expected_output": "执行转换后发现输出为空（图片型 PDF 无文字层），应如实告知用户结果为空、可能需要 OCR，而不是假装成功。",
+      "files": ["scan.pdf"],
+      "assertions": [
+        "实际运行了 markitdown 转换",
+        "识别出转换结果为空/几乎无内容",
+        "向用户如实说明结果为空并给出原因（扫描件/图片型 PDF 无文字层，需 OCR），未谎称转换成功"
+      ]
+    }
+  ]
+}

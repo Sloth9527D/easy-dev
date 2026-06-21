@@ -10,6 +10,17 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python ${CLAUDE_PLUGIN_ROOT}/script/notify_done.py",
+            "timeout": 10
+          }
+        ]
+      }
     ]
   }
 }

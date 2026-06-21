@@ -1,5 +1,5 @@
 {
-  "name": "easy_dev",
+  "name": "easy-dev",
   "owner": {
     "name": "Sloth9527D",
     "email": "p479764650@gmail.com"
@@ -9,7 +9,7 @@
   },
   "plugins": [
     {
-      "name": "easy_dev",
+      "name": "easy-dev",
       "source": "./",
       "description": "Complete collection of agents, skills, hooks, commands, and rules evolved over 10+ months of intensive daily use",
       "author": {
