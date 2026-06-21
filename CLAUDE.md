@@ -11,8 +11,8 @@
 ```
 .claude-plugin/              # 插件标识与市场元数据（plugin.json / marketplace.json）
 hooks/hooks.json             # SessionStart 钩子 → check_env.py；Stop 钩子 → notify_done.py
-commands/                    # slash 命令（cfg_init / commit / setup_env / setup_skills），多为编排安装 CLI 的提示词
-skills/                      # 技能（bak-claude-cfg / file2md / karpathy-guidelines / ctx-gen / code-inspect / dev-flow），含 SKILL.md、可选 evals/、可选 stages/ 等附属文件
+commands/                    # slash 命令（cfg_init / commit / setup_env / setup_skills / fix_build），多为编排安装 CLI 的提示词
+skills/                      # 技能（bak-claude-cfg / file2md / karpathy-guidelines / ctx-gen / code-inspect / dev-flow / dt），含 SKILL.md、可选 evals/、可选 stages/ 等附属文件
 script/
   check_env.py               # 环境诊断脚本（Python）
   notify_done.py             # Stop 钩子：任务完成时弹系统通知 + 提示音（Python，跨平台）
